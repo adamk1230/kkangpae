@@ -1,13 +1,11 @@
 import mysql from 'mysql';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { mysqlPW } from './keys';
 
 const connection = mysql.createConnection({
   port: 3306,
   host: 'localhost',
   user: 'root',
-  password: process.env.mySQL_PW,
+  password: mysqlPW.pw,
   database: 'events_db',
 });
 
