@@ -13,6 +13,7 @@ const PORT = 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// post tweets to twitter.
 const postTweet = (params) => {
   const client = new Twitter({
     consumer_key: twitter.consumer_key,
@@ -27,6 +28,7 @@ const postTweet = (params) => {
 };
 
 
+// grabs all posts that haven't been posted and posts them.
 const getNewPosts = () => {
   connection.query('SELECT * FROM events WHERE posted = 0', (err, response) => {
     console.log(response);
@@ -48,10 +50,12 @@ const getNewPosts = () => {
   });
 };
 
+
 let intervalId;
+// calls getNewPosts every 5 minutes to check and post new content.
 const run = () => {
   clearInterval(intervalId);
-  intervalId = setInterval(getNewPosts, 30000);
+  intervalId = setInterval(getNewPosts, 300000);
 };
 
 run();
@@ -78,11 +82,5 @@ app.post('/', (req, res) => {
   });
 });
 
-app.get('/last5', (req, res) => {
-  connection.query('SELECT * FROM events WHERE posted = 0', (err, response) => {
-    if (err) throw err;
-    res.json(response);
-  });
-});
 
 app.listen(PORT, () => console.log(`Server now listening on port ${PORT}!`));
