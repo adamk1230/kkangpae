@@ -1,3 +1,4 @@
+import 'babel-polyfill';
 import express from 'express';
 import bodyParser from 'body-parser';
 import path from 'path';
@@ -12,14 +13,6 @@ const PORT = 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const insertEvent = (tableName, obj, cb) => {
-  const querryString = 'INSERT INTO ?? SET ?';
-  connection.query(querryString, [tableName, obj], (err, res) => {
-    if (err) throw err;
-    cb(res);
-  });
-};
-
 const postTweet = (params) => {
   const client = new Twitter({
     consumer_key: twitter.consumer_key,
@@ -28,25 +21,50 @@ const postTweet = (params) => {
     access_token_secret: twitter.access_token_secret,
   });
 
-  client.post('statuses/update', params, (error, tweet, response) => {
+  client.post('statuses/update', params, (error) => {
     if (error) throw error;
-    // console.log(tweet);
-    // console.log(response);
   });
 };
 
-const selectID = (id) => {
-  connection.query('SELECT * FROM events WHERE id =?', id, (err, res) => {
+
+const getNewPosts = () => {
+  connection.query('SELECT * FROM events WHERE posted = 0', (err, response) => {
+    console.log(response);
+    // if (err) throw err;
+    response.forEach((post) => {
+      console.log(post);
+      let twitterSTatus = '';
+      twitterSTatus = (`Title: ${post.title} \n Image: ${post.image} \n Description: ${post.description}`);
+      const twitterObj = { status: twitterSTatus };
+
+      postTweet(twitterObj);
+      const whatToUpdate = { posted: 1 };
+      const whereToUpdate = { id: post.id };
+      const queryString = 'UPDATE events SET ? WHERE ?';
+      connection.query(queryString, [whatToUpdate, whereToUpdate], (error) => {
+        if (error) throw error;
+      });
+    });
+  });
+};
+
+let intervalId;
+const run = () => {
+  clearInterval(intervalId);
+  intervalId = setInterval(getNewPosts, 30000);
+};
+
+run();
+
+
+const insertEvent = (tableName, obj, cb) => {
+  const querryString = 'INSERT INTO ?? SET ?';
+  connection.query(querryString, [tableName, obj], (err, res) => {
     if (err) throw err;
-    console.log(res);
-    let twitterSTatus = '';
-    twitterSTatus = (`Title: ${res[0].title} \n Image: ${res[0].image} \n Description: ${res[0].description}`);
-    console.log(twitterSTatus);
-    const twitterObj = { status: twitterSTatus };
-
-    postTweet(twitterObj);
+    cb(res);
   });
 };
+
 
 app.get('/', (req, res) => {
   console.log('Made it to get /');
@@ -55,10 +73,15 @@ app.get('/', (req, res) => {
 
 app.post('/', (req, res) => {
   console.log(req.body);
-  insertEvent('events', req.body, (results) => {
-    selectID(results.insertId);
-
+  insertEvent('events', req.body, () => {
     res.redirect('/');
+  });
+});
+
+app.get('/last5', (req, res) => {
+  connection.query('SELECT * FROM events WHERE posted = 0', (err, response) => {
+    if (err) throw err;
+    res.json(response);
   });
 });
 
